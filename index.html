@@ -1,0 +1,262 @@
+
+<html>
+<head>
+    <title>打开小程序</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+    <script>
+        window.onerror = e => {
+            console.error(e)
+            alert('发生错误' + e)
+        }
+    </script>
+    <!-- weui 样式 -->
+    <link rel="stylesheet" href="https://res.wx.qq.com/open/libs/weui/2.4.1/weui.min.css"></link>
+    <!-- 调试用的移动端 console -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/eruda"></script> -->
+    <!-- <script>eruda.init();</script> -->
+    <!-- 公众号 JSSDK -->
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+    <!-- 云开发 Web SDK -->
+    <script src="https://res.wx.qq.com/open/js/cloudbase/1.1.0/cloud.js"></script>
+    <script>
+        function docReady(fn) {
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                fn()
+            } else {
+                document.addEventListener('DOMContentLoaded', fn);
+            }
+        }
+
+        docReady(async function() {
+            var ua = navigator.userAgent.toLowerCase()
+            var isWXWork = ua.match(/wxwork/i) == 'wxwork'
+            var isWeixin = !isWXWork && ua.match(/micromessenger/i) == 'micromessenger'
+            var isMobile = false
+            var isDesktop = false
+            if (navigator.userAgent.match(/(phone|pad|pod|iPhone|iPod|ios|iPad|Android|Mobile|IEMobile)/i)) {
+                isMobile = true
+            } else {
+                isDesktop = true
+            }
+
+            if (isWeixin) {
+                var containerEl = document.getElementById('wechat-web-container')
+                containerEl.classList.remove('hidden')
+                containerEl.classList.add('full', 'wechat-web-container')
+
+                var launchBtn = document.getElementById('launch-btn')
+                launchBtn.addEventListener('ready', function (e) {
+                    console.log('开放标签 ready')
+                })
+                launchBtn.addEventListener('launch', function (e) {
+                    console.log('开放标签 success')
+                })
+                launchBtn.addEventListener('error', function (e) {
+                    console.log('开放标签 fail', e.detail)
+                })
+
+                wx.config({
+                    // debug: true, // 调试时可开启
+                    appId: '请输入', // <!-- replace -->
+                    timestamp: 0, // 必填，填任意数字即可
+                    nonceStr: 'nonceStr', // 必填，填任意非空字符串即可
+                    signature: 'signature', // 必填，填任意非空字符串即可
+                    jsApiList: ['chooseImage'], // 必填，随意一个接口即可
+                    openTagList:['wx-open-launch-weapp'], // 填入打开小程序的开放标签名
+                })
+            } else if (isDesktop) {
+                // 在 pc 上则给提示引导到手机端打开
+                var containerEl = document.getElementById('desktop-web-container')
+                containerEl.classList.remove('hidden')
+                containerEl.classList.add('full', 'desktop-web-container')
+            }  else {
+                var containerEl = document.getElementById('public-web-container')
+                containerEl.classList.remove('hidden')
+                containerEl.classList.add('full', 'public-web-container')
+                var c = new cloud.Cloud({
+                    // 必填，表示是未登录模式
+                    identityless: true,
+                    // 中转小程序 AppID
+                    resourceAppid: '请输入', // <!-- replace -->
+                    // 中转小程序 云环境ID
+                    resourceEnv: '请输入', // <!-- replace -->
+                })
+                await c.init()
+                window.c = c
+
+                var buttonEl = document.getElementById('public-web-jump-button')
+                var buttonLoadingEl = document.getElementById('public-web-jump-button-loading')
+                try {
+                    await openWeapp(() => {
+                        buttonEl.classList.remove('weui-btn_loading')
+                        buttonLoadingEl.classList.add('hidden')
+                    })
+                } catch (e) {
+                    buttonEl.classList.remove('weui-btn_loading')
+                    buttonLoadingEl.classList.add('hidden')
+                    throw e
+                }
+            }
+        })
+
+        function getUrlData() {
+            var data = { path: '', action: 'getUrlScheme', query: 'jumpPage' };
+            var query = [];
+            var search = decodeURIComponent(window.location.search).substring(1).split('&');
+            for (var i = 0; i < search.length; i++) {
+                var a = search[i].split('=');
+                if (a[0] === 'path') {
+                    data.path = a[1]
+                } else if (a[0] === 'action') {
+                    data.action = a[1]
+                // gh为小程序原始id, 用于开放标签跳转，不往下传
+                } else if (a[0] !== 'gh'  && a[0] !== 'productName') {
+                    query.push(a[0] + '=' + a[1])
+                }
+            }
+            // 拼装query
+            data.query = query.join('&')
+            return data;
+        }
+
+        async function openWeapp(onBeforeJump) {
+            var c = window.c
+            var data = getUrlData();
+            console.log('data', data)
+
+            try {
+                const res = await c.callFunction({
+                    name: 'public',
+                    data: data,
+                })
+                console.warn(res)
+                if (onBeforeJump) {
+                    onBeforeJump()
+                }
+                location.href = res.result.openlink
+
+            } catch (e) {
+                console.log(e)
+            }
+        }
+    </script>
+    <style>
+        .hidden {
+            display: none;
+        }
+
+        .full {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        .public-web-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .public-web-container p {
+            position: absolute;
+            top: 40%;
+        }
+
+        .public-web-container a {
+            position: absolute;
+            bottom: 40%;
+        }
+
+        .wechat-web-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .wechat-web-container p {
+            position: absolute;
+            top: 40%;
+        }
+
+        .wechat-web-container wx-open-launch-weapp {
+            position: absolute;
+            bottom: 40%;
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .desktop-web-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .desktop-web-container p {
+            position: absolute;
+            top: 40%;
+        }
+    </style>
+</head>
+<body>
+<div class="page full">
+    <div id="public-web-container" class="hidden">
+        <p id="label1">正在打开 “小程序”...</p> <!-- replace -->
+        <a id="public-web-jump-button" href="javascript:" class="weui-btn weui-btn_primary weui-btn_loading" onclick="openWeapp()">
+            <span id="public-web-jump-button-loading" class="weui-primary-loading weui-primary-loading_transparent"><i class="weui-primary-loading__dot"></i></span>
+            打开小程序
+        </a>
+    </div>
+    <div id="wechat-web-container" class="hidden">
+        <p id="label2">点击以下按钮打开 “小程序”</p> <!-- replace -->
+        <!-- 跳转小程序的开放标签。文档 https://developers.weixin.qq.com/doc/offiaccount/OA_Web_Apps/Wechat_Open_Tag.html -->
+        <wx-open-launch-weapp id="launch-btn" username="" path=""> <!-- replace -->
+            <template>
+                <button style="width: 200px; height: 45px; text-align: center; font-size: 17px; display: block; margin: 0 auto; padding: 8px 24px; border: none; border-radius: 4px; background-color: #07c160; color:#fff;">打开小程序</button>
+            </template>
+        </wx-open-launch-weapp>
+    </div>
+    <div id="desktop-web-container" class="hidden">
+        <p class="">请在手机打开网页链接</p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 动态更改小程序原始id和path
+        var launchBtn = document.getElementById('launch-btn')
+        var label1 = document.getElementById('label1')
+        var label2 = document.getElementById('label2')
+        var appData = getOpenLabelData()
+        console.log('原始标签', appData, launchBtn)
+        if (appData?.gh) launchBtn.setAttribute('username', appData.gh)
+        if (appData?.appPath) launchBtn.setAttribute('path', appData.appPath)
+        if (appData?.productName) {
+            label1.innerText = `正在打开 “${appData.productName || '小程序'}”...`
+            label2.innerText = `点击以下按钮打开 “${appData.productName || '小程序'}”`
+        }
+    });
+
+    function getOpenLabelData() {
+        var data = { gh: '', appPath: '', productName: ''};
+        var search = decodeURIComponent(window.location.search).substring(1).split('&');
+        for (var i = 0; i < search.length; i++) {
+            var a = search[i].split('=');
+            if (a[0] === 'gh') {
+                data.gh = a[1]
+            } else if (a[0] === 'appPath') {
+                data.appPath = a[1]
+            } else if (a[0] === 'productName') {
+                data.productName = a[1]
+            }
+        }
+        return data;
+    }
+</script>
+</body>
+</html>
