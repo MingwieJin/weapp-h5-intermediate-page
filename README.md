@@ -8,6 +8,7 @@
 ### dev
 
 开发文档请参考文档
+
 [官方文档](https://developers.weixin.qq.com/minigame/dev/wxcloud/guide/staticstorage/jump-miniprogram.html)
 
 [静态网站 H5 跳小程序指北](https://www.jianshu.com/p/56a241023ba3)
@@ -24,4 +25,4 @@
 
 https://你的云环境.tcloudbaseapp.com/?path=中转小程序路径&appId=目标小程序id&appPath=目标小程序路径&productName=目标小程序名称&gh=目标小程序原始id
 
-index.html 和 cloudfunctions/public/index.js 中 // <!-- replace --> 需要替换
+index.html 和 cloudfunctions/public/index.js 中 replace 需要替换
